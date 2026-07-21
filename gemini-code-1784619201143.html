@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Database Hash Functions - Modulo Indexing</title>
+  <style>
+    :root {
+      --bg-color: #0b0f19;
+      --card-bg: #161e2e;
+      --border-color: #2d3748;
+      --text-main: #f7fafc;
+      --text-muted: #a0aec0;
+      --accent-color: #6366f1;
+      --accent-hover: #4f46e5;
+      --success-color: #10b981;
+      --collision-color: #f59e0b;
+      --code-bg: #0d1117;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 28px;
+      max-width: 750px;
+      width: 100%;
+      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.6);
+    }
+
+    header {
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      font-size: 1.6rem;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    p.description {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      margin-top: 6px;
+      line-height: 1.5;
+    }
+
+    /* Math Formula Box */
+    .formula-card {
+      background: var(--code-bg);
+      border: 1px solid var(--border-color);
+      border-left: 4px solid var(--accent-color);
+      border-radius: 6px;
+      padding: 14px 18px;
+      margin-bottom: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .formula-title {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--accent-color);
+      font-weight: 700;
+    }
+
+    .formula-equation {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 1.1rem;
+      color: #e2e8f0;
+      font-weight: bold;
+    }
+
+    /* Input Controls */
+    .control-panel {
+      display: grid;
+      grid-template-columns: 1fr 1.2fr auto;
+      gap: 12px;
+      margin-bottom: 24px;
+      align-items: end;
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    input, select {
+      padding: 10px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      background-color: var(--code-bg);
+      color: var(--text-main);
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--accent-color);
+    }
+
+    button {
+      padding: 10px 20px;
+      border-radius: 6px;
+      border: none;
+      background-color: var(--accent-color);
+      color: white;
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      height: 41px;
+    }
+
+    button:hover {
+      background-color: var(--accent-hover);
+    }
+
+    /* Database Table Visualization */
+    .table-title {
+      font-size: 1rem;
+      margin-bottom: 12px;
+      color: var(--text-main);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .table-grid {
+      display: grid;
+      grid-template-columns: repeat( auto-fit, minmax(130px, 1fr) );
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .hash-slot {
+      background-color: var(--code-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition: all 0.3s ease;
+      position: relative;
+    }
+
+    .hash-slot.highlight {
+      border-color: var(--success-color);
+      box-shadow: 0 0 12px rgba(16, 185, 129, 0.3);
+      transform: translateY(-2px);
+    }
+
+    .hash-slot.collision {
+      border-color: var(--collision-color);
+      box-shadow: 0 0 12px rgba(245, 158, 11, 0.3);
+    }
+
+    .slot-index {
+      font-size: 0.75rem;
+      font-family: monospace;
+      color: var(--accent-color);
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    .slot-content {
+      font-size: 0.85rem;
+      text-align: center;
+      width: 100%;
+    }
+
+    .record-tag {
+      background-color: rgba(99, 102, 241, 0.15);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      border-radius: 4px;
+      padding: 4px 6px;
+      margin-top: 4px;
+      font-size: 0.75rem;
+      font-family: monospace;
+      color: #c7d2fe;
+      word-break: break-all;
+    }
+
+    .empty-slot {
+      color: var(--text-muted);
+      font-style: italic;
+      font-size: 0.8rem;
+    }
+
+    /* Calculation Terminal */
+    .terminal {
+      background-color: var(--code-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 14px;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 0.85rem;
+      line-height: 1.6;
+      color: #cbd5e1;
+    }
+
+    .terminal-step {
+      margin-bottom: 4px;
+    }
+
+    .terminal-step span.highlight-math {
+      color: var(--success-color);
+      font-weight: bold;
+    }
+
+    .terminal-step span.highlight-key {
+      color: var(--accent-color);
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>💾 Database Hash Indexing Visualizer</h1>
+    <p class="description">
+      Database management systems use <strong>Hash Functions</strong> to convert a record's unique <strong>Key</strong> (e.g., Student ID) directly into an array <strong>Index</strong> for $O(1)$ constant-time lookups.
+    </p>
+  </header>
+
+  <!-- Formula Card -->
+  <div class="formula-card">
+    <div class="formula-title">Core Modulo Hash Formula</div>
+    <div class="formula-equation" id="formulaDisplay">Index = Key mod Table Size</div>
+  </div>
+
+  <!-- Input Form -->
+  <div class="control-panel">
+    <div class="input-group">
+      <label for="tableSize">Table Size ($N$)</label>
+      <select id="tableSize" onchange="resetTable()">
+        <option value="5">5 Buckets</option>
+        <option value="7" selected>7 Buckets (Prime)</option>
+        <option value="10">10 Buckets</option>
+      </select>
+    </div>
+
+    <div class="input-group">
+      <label for="studentKey">Student ID (Key)</label>
+      <input type="number" id="studentKey" placeholder="e.g. 1042" value="1025">
+    </div>
+
+    <button onclick="insertRecord()">Insert Record</button>
+  </div>
+
+  <!-- Database Grid -->
+  <div class="table-title">
+    <span>Database Storage Buckets</span>
+    <button style="background: transparent; color: var(--text-muted); border: 1px solid var(--border-color); padding: 4px 10px; height: auto; font-size: 0.8rem;" onclick="resetTable()">Clear Table</button>
+  </div>
+  <div class="table-grid" id="tableGrid"></div>
+
+  <!-- Terminal Breakdown -->
+  <div class="terminal" id="terminal">
+    <div class="terminal-step">Ready. Enter a Student ID (Key) and click "Insert Record" to see modular arithmetic in action.</div>
+  </div>
+</div>
+
+<script>
+  let tableSize = 7;
+  let hashTable = [];
+
+  const tableGrid = document.getElementById('tableGrid');
+  const terminal = document.getElementById('terminal');
+  const formulaDisplay = document.getElementById('formulaDisplay');
+
+  function initTable() {
+    tableSize = parseInt(document.getElementById('tableSize').value);
+    hashTable = Array.from({ length: tableSize }, () => []);
+    formulaDisplay.textContent = `Index = Key mod ${tableSize}`;
+    renderGrid();
+  }
+
+  function renderGrid(activeSlot = null, isCollision = false) {
+    tableGrid.innerHTML = '';
+    
+    for (let i = 0; i < tableSize; i++) {
+      const slot = document.createElement('div');
+      let slotClass = 'hash-slot';
+      
+      if (i === activeSlot) {
+        slotClass += isCollision ? ' collision' : ' highlight';
+      }
+
+      slot.className = slotClass;
+
+      let recordsHTML = '';
+      if (hashTable[i].length === 0) {
+        recordsHTML = '<div class="empty-slot">[ Empty ]</div>';
+      } else {
+        recordsHTML = hashTable[i]
+          .map(key => `<div class="record-tag">Key: ${key}</div>`)
+          .join('');
+      }
+
+      slot.innerHTML = `
+        <div class="slot-index">BUCKET [${i}]</div>
+        <div class="slot-content">${recordsHTML}</div>
+      `;
+      tableGrid.appendChild(slot);
+    }
+  }
+
+  function insertRecord() {
+    const keyInput = document.getElementById('studentKey');
+    const rawKey = keyInput.value;
+
+    if (rawKey === '' || isNaN(rawKey)) {
+      alert('Please enter a valid numeric Student ID.');
+      return;
+    }
+
+    const key = parseInt(rawKey);
+
+    // 1. Modulo Arithmetic Hash Calculation
+    const targetIndex = key % tableSize;
+    const quotient = Math.floor(key / tableSize);
+    
+    // Check if collision occurs (Chain indexing)
+    const isCollision = hashTable[targetIndex].length > 0;
+
+    // 2. Store Key in Database Hash Table
+    hashTable[targetIndex].push(key);
+
+    // 3. Render UI
+    renderGrid(targetIndex, isCollision);
+
+    // 4. Detailed Math Log for Students
+    terminal.innerHTML = `
+      <div class="terminal-step">1. <strong>Input Received:</strong> Student ID Key = <span class="highlight-key">${key}</span></div>
+      <div class="terminal-step">2. <strong>Modular Formula:</strong> Index = ${key} mod ${tableSize}</div>
+      <div class="terminal-step">3. <strong>Long Division Check:</strong> ${key} = (${tableSize} × ${quotient}) + <span class="highlight-math">${targetIndex}</span></div>
+      <div class="terminal-step">4. <strong>Computed Hash Address:</strong> Index <span class="highlight-math">${targetIndex}</span></div>
+      <div class="terminal-step" style="margin-top: 6px; color: ${isCollision ? '#f59e0b' : '#10b981'};">
+        ${isCollision 
+          ? `⚠️ <strong>Collision Detected:</strong> Bucket [${targetIndex}] already contains data. Added via Chaining.` 
+          : `✅ Record successfully indexed directly into Bucket [${targetIndex}].`}
+      </div>
+    `;
+
+    // Increment input value for easy testing by student
+    keyInput.value = key + Math.floor(Math.random() * 12) + 1;
+  }
+
+  function resetTable() {
+    initTable();
+    terminal.innerHTML = `<div class="terminal-step">Table cleared. Selected size: ${tableSize} buckets.</div>`;
+  }
+
+  // Initialize on page load
+  initTable();
+</script>
+
+</body>
+</html>
